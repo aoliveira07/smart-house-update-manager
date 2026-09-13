@@ -1,0 +1,81 @@
+name: Smart House Update Manager
+url: https://github.com/aoliveira07/smart-house-update-manager/tree/main/smart_house_update_manager
+version: 0.1.0
+slug: smart_house_update_manager
+description: Maintenance, verified backups and safe daily host reboot
+arch:
+- amd64
+- aarch64
+startup: application
+boot: auto
+init: true
+hassio_api: true
+homeassistant_api: true
+hassio_role: manager
+ingress: true
+ingress_port: 8099
+panel_admin: true
+panel_icon: mdi:home-sync
+panel_title: Update Manager
+options:
+  enabled: true
+  maintenance_time: 04:00
+  timezone: auto
+  daily_host_reboot:
+    enabled: true
+    time: 05:30
+    retry_interval_minutes: 5
+    max_wait_minutes: 120
+    force: false
+  updates:
+    core: true
+    os: true
+    apps: true
+    hacs_software: true
+    firmware: false
+    unknown: false
+  automatic_firmware_updates: false
+  backup:
+    enabled: true
+    only_when_updates: true
+    timeout_minutes: 60
+  supervisor:
+    ensure_native_auto_update: true
+  notifications:
+    success: true
+    failure: true
+    reboot_failure: true
+  dry_run: false
+  update_timeout_minutes: 120
+  health_timeout_minutes: 15
+schema:
+  enabled: bool
+  maintenance_time: str
+  timezone: str
+  daily_host_reboot:
+    enabled: bool
+    time: str
+    retry_interval_minutes: int(1,1440)
+    max_wait_minutes: int(1,1440)
+    force: bool
+  updates:
+    core: bool
+    os: bool
+    apps: bool
+    hacs_software: bool
+    firmware: bool
+    unknown: bool
+  automatic_firmware_updates: bool
+  backup:
+    enabled: bool
+    only_when_updates: bool
+    timeout_minutes: int(1,1440)
+  supervisor:
+    ensure_native_auto_update: bool
+  notifications:
+    success: bool
+    failure: bool
+    reboot_failure: bool
+  dry_run: bool
+  update_timeout_minutes: int(1,1440)
+  health_timeout_minutes: int(1,1440)

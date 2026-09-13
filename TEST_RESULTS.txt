@@ -1,0 +1,6 @@
+$ python -m pytest -q
+............................................................             [100%]
+60 passed in 2.10s
+
+$ python tools/validate_project.py
+Project manifests, Python syntax, permissions, endpoints and LF checks passed

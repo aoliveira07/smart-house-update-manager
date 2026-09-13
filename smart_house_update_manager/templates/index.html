@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Smart House Update Manager</title><link rel="stylesheet" href="static/style.css"></head>
+<body><main><header><div><small>SMART HOUSE · SH-005</small><h1>Update Manager</h1><p>Manutenção, backups e reinicialização do host.</p></div><span class="badge">v0.1.0 · homologação</span></header>
+<div id="message" role="status" aria-live="polite"></div>
+<nav aria-label="Ações"><button data-action="maintenance">Executar manutenção agora</button><button data-action="dry-run">Executar Dry Run</button><button data-action="updates">Ver atualizações</button><button data-action="reboot" class="danger">Reiniciar host agora</button><a href="#history">Ver histórico</a></nav>
+<section class="grid"><article><h2>Status</h2><div id="status"></div></article><article><h2>Agenda</h2><div id="schedule"></div></article><article><h2>Backup</h2><div id="backup"></div></article><article><h2>Reboot</h2><div id="reboot"></div></article></section>
+<section><h2>Atualizações</h2><p>Supervisor: atualização nativa. Firmware exige ativação explícita. UNKNOWN permanece manual.</p><div class="scroll"><table><thead><tr><th>Componente</th><th>Categoria</th><th>Anterior</th><th>Destino</th><th>Resultado</th></tr></thead><tbody id="updates"></tbody></table></div></section>
+<section id="history"><h2>Histórico de execuções</h2><div id="runs"></div><h3>Reboots</h3><div id="reboots"></div></section>
+<section><h2>Configurações</h2><p>Salvas nas opções do App no Supervisor. Fuso “auto” usa o Home Assistant. Para a primeira validação, habilite <code>dry_run</code> antes de iniciar o App.</p><label for="options">Opções completas em JSON</label><textarea id="options" spellcheck="false" rows="18"></textarea><button id="save">Salvar configurações</button><p id="config-state"></p></section>
+<section><h2>Diagnóstico</h2><p>Uma operação sem conclusão comprovada mantém o lock. Confirme externamente que ela terminou antes de encerrar uma execução bloqueada.</p><button data-action="resolve" class="danger">Encerrar execução bloqueada como falha</button><div id="events"></div></section>
+</main><script src="static/app.js"></script></body></html>

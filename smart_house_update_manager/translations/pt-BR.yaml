@@ -1,0 +1,66 @@
+configuration:
+  enabled:
+    name: Ativar rotinas
+  maintenance_time:
+    name: Horário da manutenção
+  timezone:
+    name: Fuso horário (auto = Home Assistant)
+  daily_host_reboot:
+    name: Reboot diário do host
+    fields:
+      enabled:
+        name: enabled
+      time:
+        name: time
+      retry_interval_minutes:
+        name: retry interval minutes
+      max_wait_minutes:
+        name: max wait minutes
+      force:
+        name: force
+  updates:
+    name: Políticas de atualização
+    fields:
+      core:
+        name: core
+      os:
+        name: os
+      apps:
+        name: apps
+      hacs_software:
+        name: hacs software
+      firmware:
+        name: firmware
+      unknown:
+        name: unknown
+  automatic_firmware_updates:
+    name: Permitir firmware automático (exige também updates.firmware)
+  backup:
+    name: Backup antes de atualizações
+    fields:
+      enabled:
+        name: enabled
+      only_when_updates:
+        name: only when updates
+      timeout_minutes:
+        name: timeout minutes
+  supervisor:
+    name: Atualização nativa do Supervisor
+    fields:
+      ensure_native_auto_update:
+        name: ensure native auto update
+  notifications:
+    name: Notificações
+    fields:
+      success:
+        name: success
+      failure:
+        name: failure
+      reboot_failure:
+        name: reboot failure
+  dry_run:
+    name: 'Dry Run: apenas simular'
+  update_timeout_minutes:
+    name: Timeout de atualização (minutos)
+  health_timeout_minutes:
+    name: Timeout de validação após reboot (minutos)

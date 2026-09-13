@@ -65,4 +65,3 @@ antes de uma publicação pública; esta entrega não atribui uma licença em se
 
 SH-005 permanece pendente de homologação real. A execução dos testes simulados não
 comprova instalação, build Docker, permissões efetivas da instalação alvo ou reboot físico.
-

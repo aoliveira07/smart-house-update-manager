@@ -1,0 +1,824 @@
+PROJETO: Smart House Update Manager
+CARTÃO: SH-005
+PLATAFORMA: Home Assistant OS
+TIPO: Home Assistant App
+OBJETIVO: substituir as automações manuais de atualização existentes por um
+aplicativo instalável, configurável e de fácil manutenção, incluindo também
+reinicialização preventiva diária do host.
+
+============================================================
+1. OBJETIVO GERAL
+============================================================
+
+Desenvolver um Home Assistant App chamado:
+
+Smart House Update Manager
+
+slug:
+smart_house_update_manager
+
+O aplicativo deverá centralizar:
+
+- atualizações automáticas do Home Assistant;
+- atualizações de Home Assistant Apps;
+- atualizações de software/HACS quando possível via entidades update;
+- gerenciamento de backup antes de atualizações;
+- controle de reinicializações;
+- reinicialização preventiva diária do host;
+- acompanhamento de jobs do Supervisor;
+- validação pós-atualização e pós-reboot;
+- histórico das execuções;
+- painel web via Ingress;
+- notificações de sucesso/falha;
+- recuperação de execução após reboot.
+
+A instalação deverá ser simples através de um repositório de Home Assistant
+Apps hospedado no GitHub.
+
+============================================================
+2. COMPORTAMENTO ATUAL A SUBSTITUIR
+============================================================
+
+Existem atualmente seis automações:
+
+01 - Backup antes das atualizações
+02 - Detectar atualização concluída
+03 - Atualizar Home Assistant Supervisor
+04 - Atualizar Home Assistant Core
+05 - Atualizar Home Assistant OS
+06 - Atualizar aplicativos HACS e firmwares
+
+Essas automações serão substituídas pelo App após homologação.
+
+NÃO remover ou alterar as automações atuais durante o desenvolvimento.
+
+A migração somente ocorrerá depois do App passar pelos testes reais.
+
+============================================================
+3. JANELA DE MANUTENÇÃO
+============================================================
+
+Horário padrão:
+
+04:00
+
+Deve ser configurável pelo usuário.
+
+A rotina de atualização inicia nesse horário.
+
+O App deve impedir duas rotinas de manutenção simultâneas.
+
+Deve existir um lock persistente de execução.
+
+============================================================
+4. REBOOT PREVENTIVO DIÁRIO
+============================================================
+
+REQUISITO OBRIGATÓRIO.
+
+O computador que executa o Home Assistant OS deverá ser reiniciado TODOS OS
+DIAS, independentemente de existir atualização.
+
+Horário padrão:
+
+05:30
+
+Deve ser configurável.
+
+Essa rotina é independente das atualizações.
+
+Portanto:
+
+- nenhuma atualização disponível → reboot diário ocorre;
+- atualização do Core ocorreu → reboot diário ocorre;
+- atualização de Apps/HACS ocorreu → reboot diário ocorre;
+- atualização do OS ocorreu → o reboot diário será usado para aplicar o OS;
+- falha em uma atualização → o reboot diário continua sendo planejado,
+  desde que não exista operação crítica ainda em andamento.
+
+Utilizar Supervisor API:
+
+POST /host/reboot
+
+Não utilizar force=true por padrão.
+
+============================================================
+5. PROTEÇÃO ANTES DO REBOOT
+============================================================
+
+Antes de executar o reboot diário, consultar:
+
+GET /jobs/info
+
+Não reiniciar enquanto existir um job crítico ativo, incluindo:
+
+- backup;
+- restore;
+- Core update;
+- OS update;
+- App update;
+- instalação;
+- migração;
+- qualquer job que possa sofrer corrupção com interrupção.
+
+Se 05:30 chegar e houver job ativo:
+
+- registrar "reboot adiado";
+- aguardar 5 minutos;
+- verificar novamente;
+- repetir até ficar seguro.
+
+Criar timeout configurável, inicialmente 120 minutos.
+
+Ao exceder o timeout:
+
+- NÃO usar reboot forçado automaticamente;
+- registrar erro;
+- criar notificação no Home Assistant;
+- manter o App operacional;
+- registrar que o reboot diário falhou.
+
+============================================================
+6. DESCOBERTA DE ATUALIZAÇÕES
+============================================================
+
+Usar prioritariamente as APIs oficiais do Supervisor.
+
+Consultar:
+
+GET /available_updates
+GET /core/info
+GET /os/info
+GET /addons
+GET /jobs/info
+
+Usar as entidades update.* do Home Assistant para atualizações que não são
+gerenciadas diretamente pelo Supervisor.
+
+Classificar as atualizações em categorias.
+
+Categorias:
+
+CORE
+OS
+SUPERVISOR
+APP
+HACS_SOFTWARE
+FIRMWARE
+UNKNOWN
+
+============================================================
+7. POLÍTICA PADRÃO
+============================================================
+
+Home Assistant Core:
+AUTO
+
+Home Assistant OS:
+AUTO
+
+Supervisor:
+AUTO NATIVO DO SUPERVISOR
+
+Home Assistant Apps:
+AUTO
+
+HACS / software:
+AUTO
+
+Firmware físico:
+MANUAL
+
+Unknown:
+MANUAL
+
+Nunca atualizar automaticamente algo classificado como UNKNOWN.
+
+============================================================
+8. SUPERVISOR
+============================================================
+
+Não criar um atualizador paralelo para o Supervisor.
+
+Usar o mecanismo nativo de auto-update.
+
+O App deverá verificar se:
+
+supervisor.auto_update = true
+
+Se não estiver habilitado, oferecer opção para habilitar.
+
+Quando configurado para fazê-lo, utilizar a API oficial do Supervisor.
+
+Não usar endpoint de desenvolvimento para atualização manual do Supervisor.
+
+============================================================
+9. BACKUP
+============================================================
+
+Criar backup apenas quando existir pelo menos uma atualização que realmente
+será instalada naquela execução.
+
+Não gerar backup apenas por causa do reboot diário.
+
+O App deve aguardar a confirmação real da conclusão do backup.
+
+Preferir API do Supervisor com background/job_id.
+
+Exemplo conceitual:
+
+POST /backups/new/full
+background: true
+
+Depois acompanhar:
+
+GET /jobs/<job_id>
+
+Só iniciar atualizações depois de:
+
+done = true
+
+Se backup falhar:
+
+- abortar atualizações;
+- registrar falha;
+- notificar usuário.
+
+O reboot diário permanece uma função independente, desde que não exista job
+de backup ainda em andamento.
+
+============================================================
+10. ORDEM DE ATUALIZAÇÃO
+============================================================
+
+Ordem preferencial:
+
+1. Home Assistant Apps
+2. software/HACS
+3. Home Assistant Core
+4. Home Assistant OS
+5. reboot diário do host
+
+Supervisor funciona pelo mecanismo nativo.
+
+Firmware não entra automaticamente nessa fila por padrão.
+
+============================================================
+11. HOME ASSISTANT APPS
+============================================================
+
+Usar endpoint atual e não endpoint depreciado:
+
+POST /store/addons/<addon>/update
+
+Usar:
+
+background: true
+
+Acompanhar job_id até conclusão.
+
+Não usar o endpoint antigo /addons/<addon>/update como implementação principal.
+
+============================================================
+12. CORE
+============================================================
+
+Atualizar Core usando API oficial.
+
+Após atualização:
+
+- aguardar Home Assistant voltar;
+- verificar versão instalada;
+- verificar disponibilidade da API;
+- registrar resultado.
+
+O restart provocado pelo update do Core NÃO elimina o reboot preventivo
+diário das 05:30.
+
+São funções diferentes.
+
+============================================================
+13. HOME ASSISTANT OS
+============================================================
+
+Executar update do OS.
+
+Não executar reboot imediatamente se for possível esperar a janela de reboot
+diário.
+
+Fluxo desejado:
+
+OS update concluído
+        ↓
+marcar reboot_required
+        ↓
+aguardar horário do reboot diário
+        ↓
+POST /host/reboot
+        ↓
+App reinicia junto com o sistema
+        ↓
+retomar estado persistido
+        ↓
+confirmar nova versão do OS
+
+Isso evita dois reboots próximos.
+
+============================================================
+14. FIRMWARE
+============================================================
+
+Firmware físico NÃO deve ser atualizado automaticamente por padrão.
+
+Detectar device_class firmware quando disponível.
+
+Deve existir configuração:
+
+automatic_firmware_updates: false
+
+No futuro deverá ser possível implementar:
+
+allowlist
+denylist
+
+Exemplo:
+
+permitir determinado ESPHome;
+bloquear firmware de equipamento crítico.
+
+Não implementar atualização cega de todo update.*.
+
+============================================================
+15. AUTOATUALIZAÇÃO DO PRÓPRIO APP
+============================================================
+
+O Smart House Update Manager não deve atualizar a si próprio no meio de uma
+rotina.
+
+Seu slug deve estar excluído da fila atual.
+
+A atualização do próprio App será tratada separadamente pelo Home Assistant
+App Store/Supervisor.
+
+============================================================
+16. ESTADO PERSISTENTE
+============================================================
+
+Salvar estado em /data.
+
+O estado deve sobreviver:
+
+- restart do App;
+- restart do Core;
+- reboot do host;
+- atualização do OS.
+
+Exemplo de dados:
+
+run_id
+started_at
+status
+current_step
+backup_status
+backup_job_id
+updates_detected
+updates_completed
+updates_failed
+core_target
+os_target
+os_reboot_required
+daily_reboot_pending
+daily_reboot_requested_at
+last_boot_timestamp
+errors
+
+Na inicialização do App:
+
+se existir execução incompleta:
+    retomar e validar estado
+
+Nunca começar uma nova rotina sem resolver a anterior.
+
+============================================================
+17. DETECÇÃO DE REBOOT CONCLUÍDO
+============================================================
+
+Antes do reboot consultar:
+
+GET /host/info
+
+Salvar boot_timestamp.
+
+Após o App iniciar novamente:
+
+consultar GET /host/info
+
+O novo boot_timestamp deverá ser diferente.
+
+Somente então marcar:
+
+daily_reboot = success
+
+Também validar:
+
+- Supervisor responde;
+- Home Assistant responde;
+- Core está operacional.
+
+============================================================
+18. HEALTH CHECK
+============================================================
+
+Após updates/reboots verificar no mínimo:
+
+- Supervisor API online;
+- Home Assistant API online;
+- Core state operacional;
+- versão do Core;
+- versão do OS;
+- jobs presos;
+- update ainda marcado como pendente;
+- boot_timestamp após reboot.
+
+Não considerar genericamente qualquer ERROR existente no log como falha da
+rotina.
+
+A instalação real já possui integrações com warnings e erros independentes.
+
+Comparar apenas condições relacionadas à execução atual.
+
+============================================================
+19. FAIL CLOSED
+============================================================
+
+Não implementar continue_on_error global.
+
+Em falhas importantes:
+
+BACKUP FAIL
+→ cancelar updates.
+
+UPDATE FAIL
+→ interromper a sequência quando necessário.
+
+JOB PRESO
+→ não iniciar operação conflitante.
+
+OS UPDATE FAIL
+→ não assumir sucesso.
+
+REBOOT BLOQUEADO
+→ aguardar e tentar novamente.
+
+Nunca marcar execução como concluída sem validação.
+
+============================================================
+20. DRY RUN
+============================================================
+
+Implementar modo:
+
+dry_run: true
+
+Nesse modo:
+
+- detectar atualizações;
+- classificá-las;
+- mostrar plano;
+- simular ordem;
+- NÃO instalar;
+- NÃO gerar backup;
+- NÃO reiniciar host.
+
+Deve existir botão no painel para executar Dry Run manual.
+
+============================================================
+21. EXECUÇÃO MANUAL
+============================================================
+
+Painel deve possuir:
+
+Executar manutenção agora
+Executar Dry Run
+Reiniciar host agora
+Ver atualizações
+Ver histórico
+
+O botão "Reiniciar host agora" deve pedir confirmação.
+
+============================================================
+22. PAINEL INGRESS
+============================================================
+
+Criar interface web através de Home Assistant Ingress.
+
+Mostrar:
+
+STATUS
+- App ativo
+- rotina em execução
+- fase atual
+
+AGENDA
+- manutenção
+- reboot diário
+
+ÚLTIMA EXECUÇÃO
+- início
+- fim
+- resultado
+
+BACKUP
+- status
+- nome/slug
+- duração
+
+UPDATES
+- componente
+- versão antiga
+- versão nova
+- resultado
+
+REBOOT
+- último reboot
+- próximo reboot
+- reboot adiado?
+- motivo
+- boot_timestamp anterior/novo
+
+HISTÓRICO
+- últimas execuções
+- sucesso/falha
+- detalhes
+
+============================================================
+23. CONFIGURAÇÕES
+============================================================
+
+Configuração inicial sugerida:
+
+enabled: true
+
+maintenance_time: "04:00"
+
+daily_host_reboot:
+  enabled: true
+  time: "05:30"
+  retry_interval_minutes: 5
+  max_wait_minutes: 120
+  force: false
+
+updates:
+  core: true
+  os: true
+  apps: true
+  hacs_software: true
+  firmware: false
+  unknown: false
+
+backup:
+  enabled: true
+  only_when_updates: true
+  timeout_minutes: 60
+
+supervisor:
+  ensure_native_auto_update: true
+
+notifications:
+  success: true
+  failure: true
+  reboot_failure: true
+
+dry_run: false
+
+Esses valores devem ser editáveis pelo painel/configuração do App.
+
+============================================================
+24. PERMISSÕES
+============================================================
+
+Começar usando o mínimo necessário:
+
+hassio_api: true
+homeassistant_api: true
+hassio_role: manager
+ingress: true
+panel_admin: true
+
+NÃO usar por padrão:
+
+full_access
+docker_api
+privileged
+host_network
+SYS_ADMIN
+
+Se algum endpoint realmente exigir papel maior, provar tecnicamente qual
+permissão é necessária antes de aumentar o privilégio.
+
+============================================================
+25. ARQUITETURA DO CÓDIGO
+============================================================
+
+Estrutura sugerida:
+
+repository.yaml
+
+smart_house_update_manager/
+├── config.yaml
+├── Dockerfile
+├── run.sh
+├── app/
+│   ├── main.py
+│   ├── config.py
+│   ├── scheduler.py
+│   ├── supervisor.py
+│   ├── homeassistant.py
+│   ├── backup.py
+│   ├── discovery.py
+│   ├── classifier.py
+│   ├── updater.py
+│   ├── reboot.py
+│   ├── health.py
+│   ├── state.py
+│   ├── journal.py
+│   └── web.py
+├── templates/
+│   └── index.html
+├── static/
+├── translations/
+│   ├── en.yaml
+│   └── pt-BR.yaml
+├── README.md
+├── DOCS.md
+├── CHANGELOG.md
+├── icon.png
+└── logo.png
+
+tests/
+├── test_scheduler.py
+├── test_classifier.py
+├── test_backup.py
+├── test_updates.py
+├── test_reboot.py
+├── test_recovery.py
+├── test_jobs.py
+└── test_dry_run.py
+
+.github/
+└── workflows/
+    ├── test.yml
+    └── build.yml
+
+============================================================
+26. BUILD E GITHUB
+============================================================
+
+Criar projeto preparado para GitHub.
+
+Usar Dockerfile como fonte de build.
+
+Preparar GitHub Actions.
+
+Arquiteturas:
+
+amd64
+aarch64
+
+Publicar imagens no GitHub Container Registry - GHCR.
+
+Não criar arquitetura baseada no antigo build.yaml.
+
+============================================================
+27. LOGS
+============================================================
+
+Logs estruturados.
+
+Cada execução deve possuir run_id.
+
+Exemplo:
+
+[SHUM][RUN:20260912-040000][BACKUP] started
+[SHUM][RUN:20260912-040000][BACKUP] success
+[SHUM][RUN:20260912-040000][CORE] updating
+[SHUM][RUN:20260912-040000][CORE] success
+[SHUM][RUN:20260912-040000][REBOOT] waiting until 05:30
+[SHUM][RUN:20260912-040000][REBOOT] requested
+[SHUM][RUN:20260912-040000][REBOOT] confirmed
+
+Nunca registrar tokens ou dados sensíveis.
+
+============================================================
+28. TESTES OBRIGATÓRIOS
+============================================================
+
+Criar testes automatizados para:
+
+01. nenhuma atualização disponível;
+02. somente Core;
+03. somente OS;
+04. somente App;
+05. somente HACS;
+06. firmware detectado e ignorado;
+07. unknown ignorado;
+08. backup OK;
+09. backup falha;
+10. backup timeout;
+11. Core update OK;
+12. Core update falha;
+13. App update OK;
+14. App update falha;
+15. OS update OK;
+16. OS update falha;
+17. job em execução às 05:30;
+18. reboot adiado;
+19. reboot realizado após job terminar;
+20. nenhuma atualização + reboot diário;
+21. atualização + reboot diário;
+22. OS update + um único reboot diário;
+23. reboot falha;
+24. retomada após reboot;
+25. App reinicia durante uma rotina;
+26. duas rotinas concorrentes;
+27. self-update do App ignorado;
+28. dry-run;
+29. Supervisor auto-update já habilitado;
+30. Supervisor auto-update desabilitado.
+
+============================================================
+29. CRITÉRIOS DE ACEITE
+============================================================
+
+Para considerar o projeto aprovado:
+
+- instalar via repositório do Home Assistant;
+- iniciar automaticamente;
+- Ingress funcionar;
+- dry-run funcionar;
+- detectar corretamente atualizações;
+- não atualizar firmware por padrão;
+- backup ser confirmado antes do update;
+- Core atualizar corretamente;
+- Apps atualizar corretamente;
+- OS atualizar corretamente;
+- Supervisor manter update nativo;
+- não executar operações concorrentes;
+- reboot do host ocorrer TODOS OS DIAS mesmo sem updates;
+- reboot aguardar jobs críticos;
+- não usar reboot forçado normalmente;
+- confirmar reboot por boot_timestamp;
+- recuperar execução após reboot;
+- histórico ficar persistido;
+- notificação de erro funcionar;
+- nenhuma credencial aparecer em logs.
+
+============================================================
+30. MIGRAÇÃO
+============================================================
+
+Não desativar as automações atuais automaticamente.
+
+Procedimento:
+
+1. instalar App;
+2. executar dry-run;
+3. validar classificação;
+4. testar backup;
+5. testar uma atualização real;
+6. testar reboot manual;
+7. testar reboot diário sem atualização;
+8. testar reboot diário após atualização;
+9. observar logs;
+10. desabilitar automações antigas;
+11. manter por alguns ciclos de teste;
+12. homologar SH-005.
+
+============================================================
+31. REGRA DE ENTREGA DE CÓDIGO
+============================================================
+
+Sempre que modificar qualquer arquivo YAML, Python, Dockerfile, workflow,
+configuração ou outro arquivo do projeto:
+
+ENTREGAR O ARQUIVO COMPLETO.
+
+Não entregar apenas diff.
+Não entregar apenas trecho.
+Não presumir que o operador irá montar partes manualmente.
+
+============================================================
+32. PRIMEIRA ENTREGA DO CODEX
+============================================================
+
+Antes de publicar qualquer coisa no GitHub:
+
+1. gerar a árvore completa do projeto;
+2. gerar todos os arquivos;
+3. explicar as decisões arquiteturais;
+4. rodar testes;
+5. apresentar resultado dos testes;
+6. revisar permissões;
+7. revisar endpoints depreciados;
+8. revisar tratamento de reboot;
+9. somente então preparar commit inicial.

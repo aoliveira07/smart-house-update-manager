@@ -1,0 +1,4 @@
+-r smart_house_update_manager/requirements.txt
+pytest>=8.4,<10
+pytest-asyncio>=1.0,<2
+PyYAML>=6.0,<7
