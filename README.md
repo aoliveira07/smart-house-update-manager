@@ -36,14 +36,15 @@ Não houve instalação em Home Assistant nem alteração das seis automações 
 
 ## GitHub e imagens
 
-O manifesto inicial não contém um endereço GHCR inventado: o Supervisor pode construir
-a partir do Dockerfile. O workflow `build.yml` constrói uma imagem multiarch chamada
-`ghcr.io/<owner>/<repository>:0.1.0` usando as coordenadas reais do repositório.
+A versão `0.1.0` está publicada em
+`ghcr.io/aoliveira07/smart-house-update-manager:0.1.0`, com download público para
+amd64 e aarch64. O manifesto já usa essa imagem. Os testes e o build no GitHub Actions
+passaram; os resultados estão em [PUBLICATION.md](PUBLICATION.md).
 
-Depois da revisão e da criação do repositório, execute o workflow manualmente sem
-publicar para validar o build. Para publicar, use a opção `publish` ou a tag `v0.1.0`.
-Torne o pacote GHCR público para instalações sem autenticação. Só depois de a imagem
-existir, execute:
+Para versões futuras, atualize a versão no manifesto e no código, execute os testes
+e use o workflow com `publish` ou uma tag `v<versão>`. O Dockerfile é a fonte do build;
+não há `build.yaml`. A instalação em um fork com coordenadas diferentes pode ser
+preparada, depois de publicar a imagem correspondente, com:
 
 ```sh
 python tools/prepare_registry.py SEU_OWNER SEU_REPOSITORIO
@@ -51,16 +52,16 @@ python tools/validate_project.py
 ```
 
 O script regrava os manifests completos com `image` e URLs corretos. Não publica,
-não faz commit e não transmite credenciais. O Dockerfile é a fonte do build; não há
-`build.yaml`. A licença de distribuição deverá ser escolhida pelo proprietário
-antes de uma publicação pública; esta entrega não atribui uma licença em seu nome.
+não faz commit e não transmite credenciais. Este repositório ainda não declara uma
+licença de distribuição; a escolha permanece com o proprietário.
 
 ## Conteúdo
 
 - [Árvore completa](TREE.txt)
 - [Arquitetura, segurança e compatibilidade](AUDIT.md)
 - [Manual do App e migração](smart_house_update_manager/DOCS.md)
-- [Resultados automatizados e limites da validação](DELIVERY.md)
+- [Relatório da primeira entrega local](DELIVERY.md)
+- [Publicação, testes e build no GitHub](PUBLICATION.md)
 - [Correspondência dos 30 cenários solicitados](TEST_MATRIX.md)
 
 SH-005 permanece pendente de homologação real. A execução dos testes simulados não

@@ -77,5 +77,6 @@ para startup, Ingress e build direto pelo Dockerfile.
   backup/App somente porque um POST foi enviado anteriormente.
 - Falhas de disco/corrupção do banco interrompem o início do serviço; o estado não
   é silenciosamente recriado. Não houve simulação de falha física de armazenamento.
-- A imagem Docker e a instalação Ingress em HA OS precisam ser validadas no ambiente
-  alvo; a máquina desta entrega não disponibilizou Docker.
+- A imagem Docker foi construída para amd64 e aarch64 no GitHub Actions, conforme
+  PUBLICATION.md. A instalação Ingress e o comportamento físico em HA OS continuam
+  pendentes de homologação; a máquina local desta entrega não disponibilizou Docker.

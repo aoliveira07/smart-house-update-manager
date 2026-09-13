@@ -5,6 +5,7 @@ smart-house-update-manager/
   .gitignore
   AUDIT.md
   DELIVERY.md
+  PUBLICATION.md
   pyproject.toml
   README.md
   repository.yaml

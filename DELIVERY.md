@@ -2,6 +2,11 @@
 
 Data: 12/09/2026. Versão: 0.1.0. Status: código preparado para homologação.
 
+**Registro histórico da primeira entrega local.** A publicação posterior autorizada,
+o build Docker no GitHub e a imagem pública no GHCR estão registrados em
+[PUBLICATION.md](PUBLICATION.md). As limitações de publicação abaixo descrevem a
+situação anterior; a homologação física no Home Assistant continua pendente.
+
 ## Entregue
 
 - Árvore completa e arquivos integrais, sem exigir montagem manual de trechos.

@@ -79,3 +79,4 @@ schema:
   dry_run: bool
   update_timeout_minutes: int(1,1440)
   health_timeout_minutes: int(1,1440)
+image: ghcr.io/aoliveira07/smart-house-update-manager
