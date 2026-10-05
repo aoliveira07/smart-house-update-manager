@@ -37,11 +37,18 @@ def create_app(manager, reboot, zone):
 
     async def status(request):
         now = local_now(zone())
+        history = manager.state.history()
+        active = manager.state.active()
+        last = history[0] if history else None
         return web.json_response({"csrf": csrf, "active": manager.state.active(),
-            "config": manager.config, "timezone": zone(), "history": manager.state.history(),
+            "config": manager.config, "timezone": zone(), "history": history,
             "events": manager.state.events(), "reboot": manager.state.get("reboot", {}),
             "reboot_history": manager.state.get("reboot_history", []),
             "notifications_pending": len(manager.state.get("notifications", {})),
+            "last_maintenance": {"status": last.get("status"), "finished_at": last.get("finished_at"),
+                                 "source": last.get("source"), "reason": (last.get("errors") or [None])[-1]}
+                if last else None,
+            "eligible_pending": (active or last or {}).get("post_validation", {}).get("pending", []),
             "next_maintenance": next_time(now, manager.config["maintenance_time"], manager.state.get("maintenance_date")),
             "next_reboot": next_time(now, manager.config["daily_host_reboot"]["time"], manager.state.get("reboot_date"))})
 
@@ -49,7 +56,9 @@ def create_app(manager, reboot, zone):
         name = request.match_info["name"]
         body = await request.json()
         if name in ("maintenance", "dry-run"):
-            return web.json_response({"run_id": await manager.start(dry=name == "dry-run")}, status=202)
+            return web.json_response({"run_id": await manager.start(
+                dry=name == "dry-run", source="dry_run" if name == "dry-run" else "manual",
+                timezone=zone())}, status=202)
         if name == "reboot":
             if body.get("confirm") is not True:
                 raise ValueError()

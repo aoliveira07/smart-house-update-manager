@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.1 — 2026-10-04
+
+- Corrigido o bootstrap tardio da agenda: a primeira inicialização não repete manutenção ou reboot já perdidos.
+- Falhas de preflight sem mutação incerta agora terminam como `deferred` e liberam o lock persistente.
+- Operações incertas continuam em `blocked` e exigem reconciliação explícita antes de qualquer repetição.
+- Adicionada validação pós-update que falha quando um item planejado permanece pendente na mesma versão alvo.
+- Histórico e eventos registram origem, descoberta, seleção, operação e validação; o Ingress exibe resultado, motivo e pendências.
+- Incluídos testes de regressão para bootstrap, timeout seguro e update ainda pendente.
+
 ## 0.1.0 — 2026-09-12
 
 - Primeira entrega SH-005 para homologação.

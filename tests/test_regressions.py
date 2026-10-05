@@ -1,3 +1,4 @@
+import app.updater as updater_module
 from conftest import add_update, pump
 
 
@@ -45,5 +46,20 @@ async def test_jobs_block_backup_until_timeout(env):
     await pump(env, 2)
     env.now[0] += 7201
     await pump(env, 2)
-    assert env.state.active()["status"] == "blocked"
+    assert env.state.active() is None
+    assert env.state.history()[0]["status"] == "deferred"
     assert not env.sup.posts()
+
+
+async def test_post_validation_rejects_same_target_still_pending(env, monkeypatch):
+    await env.m.start()
+    run = env.state.active()
+    run["queue"] = [{"id": "core", "category": "CORE", "target": "2", "selected": True}]
+
+    async def pending(*_args):
+        return [{"id": "core", "category": "CORE", "target": "2", "selected": True}]
+
+    monkeypatch.setattr(updater_module, "discover", pending)
+    assert await env.m.finalize_run(run) is False
+    assert env.state.active() is None
+    assert env.state.history()[0]["status"] == "failed"

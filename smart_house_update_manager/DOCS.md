@@ -8,6 +8,8 @@ usa GHCR após configurar as coordenadas reais do repositório.
 
 Instale sem iniciar, mude `dry_run` para `true` nas opções do App e só então inicie.
 O App inicia automaticamente nos boots seguintes (`boot: auto`, `startup: application`).
+Na primeira inicialização, se o processo começar depois do horário configurado, a
+agenda cria um baseline para o próximo dia e não repete a janela perdida.
 Abra “Update Manager” no painel lateral com uma conta administradora.
 
 O modo global Dry Run também bloqueia o botão de reboot manual. “Executar Dry Run”
@@ -84,6 +86,10 @@ de falha. Se não for possível reconciliar, verifique o Supervisor e a integra�
 origem; só após confirmar o término externo use “Encerrar execução bloqueada como falha”.
 Esse botão exige confirmação e recusa encerrar enquanto houver jobs ou updates ativos.
 
+Uma espera de preflight que exceda o prazo sem ter enviado uma mutação é registrada
+como `deferred`, libera o lock e pode ser tentada na próxima janela. Um POST incerto
+continua sendo `blocked` para impedir duplicidade.
+
 ## Reboot diário e OS
 
 A agenda é registrada por data local, independentemente da existência de updates.
@@ -113,6 +119,8 @@ confirmar sucesso, mesmo que o host tenha de fato reiniciado.
 ## Histórico, notificações e diagnóstico
 
 O painel exibe as últimas 100 execuções, 100 resultados de reboot e 300 eventos.
+Cada execução registra a origem (`scheduled`, `manual` ou `dry_run`), fuso, plano,
+seleção, operação, job, validação pós-update e motivo de bloqueio/adiamento.
 As execuções e eventos permanecem no banco; não há remoção automática nesta versão.
 As notificações são persistentes no Home Assistant e ficam em fila caso o Core esteja
 indisponível. Logs usam run_id e fases controladas; tokens e respostas HTTP brutas não

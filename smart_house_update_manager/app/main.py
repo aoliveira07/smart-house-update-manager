@@ -8,7 +8,7 @@ from aiohttp import web
 from .config import load
 from .homeassistant import HomeAssistant
 from .reboot import Reboot
-from .scheduler import due, local_now
+from .scheduler import bootstrap_date, due, local_now
 from .state import Busy, State
 from .supervisor import APIError, Supervisor
 from .updater import Manager
@@ -47,6 +47,17 @@ async def serve():
                 state.put("timezone", detected_zone)
                 now = local_now(zone())
                 opts = manager.config
+                if state.get("scheduler_initialized") is not True:
+                    # Do not replay a maintenance or reboot slot missed before
+                    # the first start.  A slot still ahead remains due today.
+                    state.put_many({
+                        "scheduler_initialized": True,
+                        "maintenance_date": bootstrap_date(
+                            now, opts["maintenance_time"], state.get("maintenance_date")),
+                        "reboot_date": bootstrap_date(
+                            now, opts["daily_host_reboot"]["time"], state.get("reboot_date")),
+                    })
+                    manager.journal.log("scheduler-" + now.date().isoformat(), "SCHEDULER", "baseline established")
                 if opts["enabled"]:
                     daily = opts["daily_host_reboot"]
                     if daily["enabled"] and due(now, daily["time"], state.get("reboot_date")):
@@ -58,7 +69,8 @@ async def serve():
                             await reboot.request(now.date().isoformat(), scheduled)
                         state.put("reboot_date", now.date().isoformat())
                     if due(now, opts["maintenance_time"], state.get("maintenance_date")) and not state.active():
-                        await manager.start(scheduled_date=now.date().isoformat())
+                        await manager.start(scheduled_date=now.date().isoformat(), source="scheduled",
+                                             timezone=zone())
             except (APIError, Busy):
                 pass
             except Exception as exc:

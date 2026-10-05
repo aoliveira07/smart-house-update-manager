@@ -41,7 +41,7 @@ class Manager:
             del pending[ident]
             self.state.put("notifications", pending)
 
-    async def start(self, dry=False, scheduled_date=None):
+    async def start(self, dry=False, scheduled_date=None, source="manual", timezone=None):
         async with self.mutex:
             if self.state.active() or self.state.get("reboot", {}).get("status") in ("waiting", "requested"):
                 raise Busy("Manutenção ou reboot já pendente")
@@ -49,6 +49,7 @@ class Manager:
                 raise Busy("App desabilitado; apenas Dry Run disponível")
             run = {"run_id": uuid.uuid4().hex, "started_at": stamp(), "status": "running",
                    "current_step": "discovery", "dry_run": dry or self.config["dry_run"],
+                   "source": "dry_run" if dry else source, "timezone": timezone,
                    "options": copy.deepcopy(self.config), "updates_detected": [],
                    "updates_completed": [], "updates_failed": [], "errors": [],
                    "backup_status": "not_needed", "backup_job_id": None,
@@ -75,6 +76,17 @@ class Manager:
         run["abort"] = True  # A later reconciliation cannot restart the update sequence.
         self.state.save(run)
 
+    async def defer(self, run, reason):
+        """Close a safe preflight wait without leaving a permanent lock."""
+        if reason not in run["errors"]:
+            run["errors"].append(reason)
+        run.update(status="deferred", current_step="deferred", deferred_reason=reason,
+                   finished_at=stamp(), operation=None)
+        self.state.save(run, release=True)
+        self.journal.log(run["run_id"], "RUN", "deferred: " + reason)
+        if not run["dry_run"]:
+            await self.notify(run["run_id"], f"Execução {run['run_id']}: adiada. Consulte o histórico.", "failure")
+
     async def safe(self):
         if active_jobs(await self.sup.jobs()):
             return False
@@ -90,9 +102,28 @@ class Manager:
             return True
         started = run.setdefault("idle_wait_started", self.clock())
         if self.clock() - started > run["options"]["update_timeout_minutes"] * 60:
-            await self.block(run, "jobs ativos excederam o prazo; nenhuma operação nova foi iniciada")
+            await self.defer(run, "preflight ocupado excedeu o prazo; nenhuma operação nova foi iniciada")
         self.state.save(run)
         return False
+
+    async def finalize_run(self, run):
+        """Re-discover after the plan and reject silent pending updates."""
+        await health(self.sup, self.ha)
+        self_slug = (await self.sup.get("/addons/self/info"))["slug"]
+        remaining = await discover(self.sup, self.ha, run["options"], self_slug)
+        planned = {(u["id"], u.get("target")) for u in run.get("queue", []) if u.get("selected")}
+        pending = [u for u in remaining if u.get("selected") and
+                   (u.get("id"), u.get("target")) in planned]
+        run["post_validation"] = {"pending": copy.deepcopy(pending), "checked_at": stamp()}
+        self.journal.log(run["run_id"], "VALIDATION",
+                         "pending updates remain" if pending else "all planned updates cleared")
+        self.state.save(run)
+        if pending:
+            reason = "update selecionado continua pendente após a validação pós-update"
+            run["errors"].append(reason)
+            await self.finish(run, "failed")
+            return False
+        return True
 
     def dispatch(self, run, kind, request, **fields):
         timeout = run["options"]["backup"]["timeout_minutes"] if kind == "backup" else run["options"]["update_timeout_minutes"]
@@ -116,14 +147,20 @@ class Manager:
                 if run["status"] == "blocked":
                     return
                 if run["current_step"] == "discovery":
+                    self.journal.log(run["run_id"], "DISCOVERY", "started")
                     self.self_slug = (await self.sup.get("/addons/self/info"))["slug"]
                     run["updates_detected"] = await discover(self.sup, self.ha, run["options"], self.self_slug)
+                    for update in run["updates_detected"]:
+                        reason = "selected" if update.get("selected") else "policy or capability"
+                        self.journal.log(run["run_id"], "DISCOVERY",
+                                         f"{update.get('category')} {update.get('id')} {update.get('current')}->{update.get('target')} {reason}")
                     run["jobs_at_discovery"] = [{"job_id": j.get("uuid"), "name": j.get("name"),
                                                   "done": j.get("done")} for j in active_jobs(await self.sup.jobs())]
                     run["queue"] = [copy.deepcopy(u) for u in run["updates_detected"] if u["selected"]]
                     run["supervisor_auto_update"] = (await self.sup.get("/supervisor/info")).get("auto_update")
                     self.state.save(run)
                     if run["dry_run"]:
+                        self.journal.log(run["run_id"], "DISCOVERY", "dry_run plan complete")
                         await self.finish(run, "dry_run")
                         return
                     run["current_step"] = "native_supervisor"
@@ -155,8 +192,8 @@ class Manager:
                         return
                     run.pop("idle_wait_started", None)
                     if run["index"] >= len(run["queue"]):
-                        await health(self.sup, self.ha)
-                        await self.finish(run, "success")
+                        if await self.finalize_run(run):
+                            await self.finish(run, "success")
                         return
                     update = run["queue"][run["index"]]
                     category = update["category"]
@@ -205,15 +242,26 @@ class Manager:
             try:
                 response = task.result()
             except APIError as exc:
-                op["rejected"] = not exc.uncertain
-                self.state.save(run)
-                await self.block(run, "operação recusada" if op["rejected"] else "resposta perdida; não repetir POST")
+                if exc.uncertain:
+                    self.state.save(run)
+                    await self.block(run, "resposta perdida; não repetir POST")
+                    return
+                # A confirmed rejection means no mutation was accepted.  It is
+                # safe to record a failed run and release the lock.
+                op["rejected"] = True
+                if op["kind"] == "backup":
+                    run["backup_status"] = "failed"
+                elif op.get("update"):
+                    run["updates_failed"].append({**op["update"], "result": "failed"})
+                run["errors"].append("operação recusada pelo Supervisor/Home Assistant")
+                await self.finish(run, "failed")
                 return
             op["accepted"] = True
             if isinstance(response, dict) and response.get("job_id"):
                 op["job_id"] = response["job_id"]
                 if op["kind"] == "backup":
                     run["backup_job_id"] = response["job_id"]
+                self.journal.log(run["run_id"], run["current_step"], "job accepted")
             self.state.save(run)
         if op.get("rejected"):
             if await self.safe():
@@ -250,6 +298,7 @@ class Manager:
                 if op["kind"] == "backup":
                     run.update(backup_status="success", backup_slug=op["slug"], backup_name=op["name"],
                                backup_duration_seconds=self.clock() - op["started"], current_step="updates")
+                    self.journal.log(run["run_id"], "BACKUP", "completed")
                 elif op["kind"] == "native_supervisor":
                     run.update(supervisor_auto_update=True, current_step="backup_gate")
                 else:
@@ -261,6 +310,7 @@ class Manager:
                         run["updates_completed"].append({**update, "result": "success"})
                         run["index"] += 1
                         run["current_step"] = "updates"
+                        self.journal.log(run["run_id"], "UPDATE", "validated")
                 run["operation"] = None
                 self.state.save(run)
                 if run.get("abort"):
@@ -279,7 +329,10 @@ class Manager:
                         op["rejected"] = True
                         if op["kind"] == "backup":
                             run["backup_status"] = "failed"
-                        await self.block(run, "job concluído com erro")
+                        if op.get("update"):
+                            run["updates_failed"].append({**op["update"], "result": "failed"})
+                        run["errors"].append("job concluído com erro")
+                        await self.finish(run, "failed")
                         return
         if self.clock() > op["deadline"]:
             if op["kind"] == "backup":

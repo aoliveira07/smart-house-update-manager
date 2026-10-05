@@ -1,6 +1,6 @@
 # Smart House Update Manager — SH-005
 
-Primeira entrega de código, versão **0.1.0**, para homologação em Home Assistant OS.
+Entrega de código, versão **0.1.1**, para homologação em Home Assistant OS.
 Centraliza manutenção às 04:00 e reboot diário às 05:30, ambos configuráveis.
 O reboot ocorre mesmo sem atualizações, respeitando jobs críticos e o modo Dry Run.
 
@@ -29,15 +29,14 @@ Não houve instalação em Home Assistant nem alteração das seis automações 
    repositórios de Apps do Home Assistant. Como alternativa, copie a pasta
    `smart_house_update_manager` para `/addons` de uma instalação de testes.
 5. **Antes de iniciar o App, configure `dry_run: true` nas opções do Supervisor.**
-   O padrão solicitado é `false`: iniciar depois das 04:00 pode iniciar manutenção
-   de recuperação do horário perdido. O reboot também possui recuperação de horário,
-   limitada aos 120 minutos de espera a partir das 05:30.
+   O padrão solicitado é `false`. A primeira inicialização tardia cria baseline e não
+   repete uma janela de manutenção ou reboot que já passou.
 6. Abra o painel Ingress e siga a homologação descrita em DOCS.md.
 
 ## GitHub e imagens
 
-A versão `0.1.0` está publicada em
-`ghcr.io/aoliveira07/smart-house-update-manager:0.1.0`, com download público para
+A versão `0.1.1` será publicada em
+`ghcr.io/aoliveira07/smart-house-update-manager:0.1.1`, com download público para
 amd64 e aarch64. O manifesto já usa essa imagem. Os testes e o build no GitHub Actions
 passaram; os resultados estão em [PUBLICATION.md](PUBLICATION.md).
 

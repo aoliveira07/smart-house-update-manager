@@ -53,9 +53,12 @@ class Reboot:
                                 run["updates_failed"].append({**update, "result": "failed"})
                                 await self.m.finish(run, "failed")
                                 return
-                            run["updates_completed"].append({**update, "result": "success"})
-                            run.update(os_reboot_required=False, last_boot_timestamp=new_boot)
-                            await self.m.finish(run, "failed" if run.get("abort") else "success")
+                            if run.get("abort"):
+                                await self.m.finish(run, "failed")
+                            elif await self.m.finalize_run(run):
+                                run["updates_completed"].append({**update, "result": "success"})
+                                run.update(os_reboot_required=False, last_boot_timestamp=new_boot)
+                                await self.m.finish(run, "success")
                         item.update(status="success", boot_after=new_boot, versions=versions, finished_at=stamp())
                         self.m.state.put("reboot", item)
                         self.m.state.put("last_boot_timestamp", new_boot)
