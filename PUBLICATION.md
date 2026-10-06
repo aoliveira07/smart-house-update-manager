@@ -1,6 +1,19 @@
-# Publicação — Smart House Update Manager 0.1.2
+# Publicação — Smart House Update Manager 0.1.3
 
 ## Release atual
+
+- Tag: https://github.com/aoliveira07/smart-house-update-manager/tree/v0.1.3
+- Commit: `d12d31e4d569663f8b252309b7605e5310c487b6`
+- Imagem: `ghcr.io/aoliveira07/smart-house-update-manager:0.1.3`
+- Workflow de testes: https://github.com/aoliveira07/smart-house-update-manager/actions/runs/37432970204
+- Workflow de build/publicação: https://github.com/aoliveira07/smart-house-update-manager/actions/runs/37432970281
+- 68 testes passaram localmente; os workflows de testes e build/publicação concluíram com sucesso.
+
+Esta versão reconhece a atualização HACS baixada com reinício requerido, limita a
+confirmação HTTP a 60 segundos e reconcilia evidência de versão antes de qualquer
+nova tentativa, evitando duplicidade e destravando a fila de Core/OS.
+
+## Histórico — 0.1.2
 
 - Tag: https://github.com/aoliveira07/smart-house-update-manager/tree/v0.1.2
 - Commit: `e8291715670c904fc3ed0a4e303c1c446b09c4d4`

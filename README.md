@@ -40,8 +40,8 @@ que o lock fique permanente.
 
 ## GitHub e imagens
 
-A versão `0.1.2` está publicada em
-`ghcr.io/aoliveira07/smart-house-update-manager:0.1.2`, com download público para
+A versão `0.1.3` está publicada em
+`ghcr.io/aoliveira07/smart-house-update-manager:0.1.3`, com download público para
 amd64 e aarch64. O manifesto já usa essa imagem. Os testes e o build no GitHub Actions
 passaram; os resultados estão em [PUBLICATION.md](PUBLICATION.md).
 
