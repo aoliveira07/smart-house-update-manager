@@ -1,17 +1,18 @@
-# Publicação — Smart House Update Manager 0.1.1
+# Publicação — Smart House Update Manager 0.1.2
 
 ## Release atual
 
-- Release: https://github.com/aoliveira07/smart-house-update-manager/releases/tag/v0.1.1
-- Commit: `bfa63cac45e6b22333da15b66b6d1b40b07f5288`
-- Imagem: `ghcr.io/aoliveira07/smart-house-update-manager:0.1.1`
-- Digest do índice OCI: `sha256:f8186871e136872b58ba15e6440e560e72feb7cce602dcb3adee12340dd3c564`
-- Manifestos publicados: `linux/amd64` (`sha256:abe95e5576a8e9934db121a398d05f3703e2e935797292594eba50b663d4b370`) e `linux/arm64` (`sha256:4e13742fec14cf47aafde3be4b97c439b6a76b82d0e49989e2e5d0bbb30463d4`).
-- 63 testes passaram localmente e no workflow de build; `tools/validate_project.py` passou.
+- Tag: https://github.com/aoliveira07/smart-house-update-manager/tree/v0.1.2
+- Commit: `e8291715670c904fc3ed0a4e303c1c446b09c4d4`
+- Imagem: `ghcr.io/aoliveira07/smart-house-update-manager:0.1.2`
+- Digest do índice OCI: `sha256:ece1b16afb55b39e062b55ea894a4b0e977b6d2190fee62a2530c79c98622aa7`
+- Manifestos publicados: `linux/amd64` (`sha256:544f8a1541aaee6b452c871b36b9b944e41b7da9a5186c529679c696e69164b3`) e `linux/arm64` (`sha256:f4178a6c6bf64eb3130fb36257619b98e52065683c8f204e5aa49c356ae04513`).
+- 65 testes passaram localmente e no workflow de testes; `tools/validate_project.py` passou.
+- Workflow de build/publicação: https://github.com/aoliveira07/smart-house-update-manager/actions/runs/37408427737
 
-As alterações de código desta versão corrigem o bootstrap tardio da agenda, liberam
-o lock após preflight seguro, preservam hard-block para POST incerto, validam updates
-pendentes após a execução e registram diagnóstico estruturado no Ingress.
+As alterações de código desta versão adicionam reconciliação automática para operações
+que excedem o timeout, confirmação por job/versão, novas tentativas seguras com limite,
+liberação do lock após esgotamento e diagnóstico estruturado de `RECOVERY` no Ingress.
 
 ## Histórico — 0.1.0
 
