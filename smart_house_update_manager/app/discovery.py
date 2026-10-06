@@ -1,4 +1,5 @@
 from .classifier import ORDER, classify, eligible
+from .health import hacs_update_staged
 
 
 async def discover(sup, ha, config, self_slug):
@@ -24,6 +25,8 @@ async def discover(sup, ha, config, self_slug):
     registry = await ha.registry()  # Failure aborts; never guess ownership from names.
     for entity in await ha.states():
         if not entity["entity_id"].startswith("update.") or entity.get("state") != "on":
+            continue
+        if hacs_update_staged(entity):
             continue
         category = classify(entity, registry)
         if category is None:

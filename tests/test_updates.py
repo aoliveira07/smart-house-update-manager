@@ -12,6 +12,36 @@ async def test_individual_update_success(env, category):
     assert [u["category"] for u in run["updates_completed"]] == [category]
 
 
+async def test_hacs_install_uses_bounded_ack_timeout(env):
+    add_update(env, "HACS_SOFTWARE")
+    await env.m.start()
+    await pump(env)
+    assert env.ha.install_timeouts == [60]
+
+
+async def test_hacs_downloaded_target_waiting_for_restart_is_success(env):
+    add_update(env, "HACS_SOFTWARE")
+    env.ha.stage_hacs = True
+    await env.m.start()
+    await pump(env)
+    run = env.state.history()[0]
+    assert run["status"] == "success"
+    assert run["updates_completed"][0]["target"] == "2"
+    assert len(env.ha.install_timeouts) == 1
+
+
+async def test_hacs_uncertain_timeout_reconciles_staged_target_without_retry(env):
+    add_update(env, "HACS_SOFTWARE")
+    env.ha.stage_hacs = True
+    env.ha.hacs_uncertain = True
+    await env.m.start()
+    await pump(env, 12)
+    run = env.state.history()[0]
+    assert run["status"] == "success"
+    assert len(env.ha.install_timeouts) == 1
+    assert any(event["phase"] == "RECOVERY" for event in env.state.events())
+
+
 @pytest.mark.parametrize("category,path", [("CORE", "/core/update"), ("APP", "/store/addons/test_app/update"), ("OS", "/os/update")])
 async def test_update_failure(env, category, path):
     add_update(env, category)

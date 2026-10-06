@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.3 — 2026-10-06
+
+- Reconhece atualização HACS baixada com a versão alvo instalada e reinício do Home Assistant requerido, sem reenviar o install nem transformar a etapa em falha.
+- Limita a espera da confirmação HTTP do HACS a 60 segundos e deixa a operação durável seguir para reconciliação por estado, preservando o fail-closed para mutações incertas.
+- Adiciona regressões para o cenário staged/restart-required e para o timeout de confirmação limitado.
+
 ## 0.1.2 — 2026-10-06
 
 - Adicionada reconciliação automática para operações que expiraram sem confirmação.

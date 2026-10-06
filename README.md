@@ -1,6 +1,6 @@
 # Smart House Update Manager — SH-005
 
-Entrega de código, versão **0.1.2**, para homologação em Home Assistant OS.
+Entrega de código, versão **0.1.3**, para homologação em Home Assistant OS.
 Centraliza manutenção às 04:00 e reboot diário às 05:30, ambos configuráveis.
 O reboot ocorre mesmo sem atualizações, respeitando jobs críticos e o modo Dry Run.
 
@@ -9,7 +9,7 @@ workflows para amd64/aarch64 e instruções para GHCR. Repositório:
 https://github.com/aoliveira07/smart-house-update-manager.
 Não houve instalação em Home Assistant nem alteração das seis automações existentes.
 
-A versão 0.1.2 reconcilia automaticamente operações que expiraram sem confirmação:
+A versão 0.1.3 reconcilia automaticamente operações que expiraram sem confirmação:
 confirma a versão ou o job, aguarda operações ainda ativas e refaz a tentativa somente
 quando o Supervisor não mostra mais a operação anterior. O limite de tentativas impede
 que o lock fique permanente.

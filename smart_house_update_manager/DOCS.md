@@ -89,6 +89,14 @@ seguintes usam `recovery.retry_interval_minutes`. Após `recovery.max_attempts`,
 é marcada como falha e o lock é liberado para a próxima janela de manutenção. Um POST sem
 confirmação nunca é repetido cegamente; ele permanece limitado à reconciliação segura.
 
+Para HACS/software, a chamada `update.install` recebe no máximo 60 segundos para
+confirmação HTTP. HACS pode baixar a versão e manter o Home Assistant em execução
+com `installed_version` já alterada, `in_progress=false` e uma mensagem indicando
+que o reinício é necessário. Esse estado é aceito como atualização staged e não
+gera um segundo install; o reboot diário aplica o código carregado no próximo
+reinício. Se a versão alvo não estiver instalada ou ainda estiver em progresso,
+a política continua fail-closed e a reconciliação limitada permanece ativa.
+
 O botão “Encerrar execução bloqueada como falha” permanece como intervenção manual de
 emergência, mas não é necessário para o fluxo normal de recuperação e continua recusando
 o encerramento enquanto houver jobs ou updates ativos.

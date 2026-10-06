@@ -78,6 +78,9 @@ class FakeSupervisor:
 class FakeHA:
     def __init__(self):
         self.entities, self.entries, self.calls = [], {}, []
+        self.install_timeouts = []
+        self.stage_hacs = False
+        self.hacs_uncertain = False
         self.online = True
 
     async def request(self, method, path, body=None, timeout=30):
@@ -98,9 +101,16 @@ class FakeHA:
 
     async def install(self, update, timeout):
         self.calls.append(("install", update["id"]))
+        self.install_timeouts.append(timeout)
         entity = next(e for e in self.entities if e["entity_id"] == update["id"])
-        entity["state"] = "off"
         entity["attributes"]["installed_version"] = update["target"]
+        if self.stage_hacs:
+            entity["state"] = "on"
+            entity["attributes"]["release_summary"] = "Restart of Home Assistant required"
+        else:
+            entity["state"] = "off"
+        if self.hacs_uncertain:
+            raise APIError(0, True)
         return []
 
     async def notify(self, ident, message):

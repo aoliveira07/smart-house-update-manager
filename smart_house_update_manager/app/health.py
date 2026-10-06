@@ -1,6 +1,20 @@
 from .supervisor import APIError, active_jobs, segment
 
 
+def hacs_restart_required(entity):
+    attrs = entity.get("attributes", {})
+    summary = str(attrs.get("release_summary", "")).lower()
+    return "restart" in summary and "required" in summary
+
+
+def hacs_update_staged(entity, target=None):
+    attrs = entity.get("attributes", {})
+    return (entity.get("state") == "on" and
+            (target is None or attrs.get("installed_version") == target) and
+            attrs.get("installed_version") == attrs.get("latest_version") and
+            not attrs.get("in_progress") and hacs_restart_required(entity))
+
+
 async def health(sup, ha):
     supervisor = await sup.get("/supervisor/info")
     core = await sup.get("/core/info")
@@ -18,7 +32,20 @@ async def health(sup, ha):
 
 async def validate_update(sup, ha, update, after_boot=False):
     category = update["category"]
-    if category in ("HACS_SOFTWARE", "FIRMWARE"):
+    if category == "HACS_SOFTWARE":
+        entity = await ha.entity(update["id"])
+        attrs = entity.get("attributes", {})
+        if (attrs.get("installed_version") != update["target"] or
+                attrs.get("in_progress")):
+            return False
+        if entity.get("state") == "off":
+            return True
+        # HACS can finish the download while Home Assistant still has the
+        # previous integration loaded. In that case the entity remains on
+        # and explicitly reports that a restart is required. The downloaded
+        # target is durable evidence; retrying install would be a duplicate.
+        return hacs_restart_required(entity)
+    if category == "FIRMWARE":
         entity = await ha.entity(update["id"])
         return (entity.get("state") == "off" and
                 entity.get("attributes", {}).get("installed_version") == update["target"] and

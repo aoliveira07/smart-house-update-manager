@@ -15,6 +15,8 @@ from .journal import Journal, stamp
 from .state import Busy
 from .supervisor import APIError, active_jobs, job_complete, segment
 
+HACS_ACK_TIMEOUT_SECONDS = 60
+
 
 class Manager:
     def __init__(self, state, sup, ha, config, clock=time.time):
@@ -245,6 +247,18 @@ class Manager:
                 if isinstance(response, dict) and response.get("job_id"):
                     operation["job_id"] = response["job_id"]
                 self.state.save(run)
+        # A lost/timeout response can still leave durable evidence behind.
+        # Check the installed version (or staged HACS state) before requiring
+        # an accepted response or job id; otherwise a completed mutation is
+        # incorrectly replayed during recovery.
+        try:
+            if await self.operation_confirmed(operation):
+                if not await self.complete_operation(run, operation, reconciled=True):
+                    self.recovery_wait(run, "operação concluída, mas há outra atividade crítica ativa")
+                return
+        except APIError:
+            self.recovery_wait(run, "API indisponível durante a reconciliação")
+            return
         if not operation.get("accepted") and not operation.get("job_id"):
             try:
                 if await self.safe():
@@ -268,10 +282,6 @@ class Manager:
                 self.recovery_wait(run, "API indisponível para reconciliar POST incerto")
             return
         try:
-            if await self.operation_confirmed(operation):
-                if not await self.complete_operation(run, operation, reconciled=True):
-                    self.recovery_wait(run, "operação concluída, mas há outra atividade crítica ativa")
-                return
             state = await self.operation_job_state(operation)
             if state == "active":
                 self.recovery_wait(run, "job ainda ativo; nenhuma nova operação será enviada")
@@ -404,7 +414,13 @@ class Manager:
                             if category == "CORE":
                                 body["backup"] = False
                             return await self.sup.post("/" + category.lower() + "/update", body, timeout)
-                        return await self.ha.install(update, timeout)
+                        # HACS has no Supervisor job to poll and its service
+                        # call may stay open while files are downloaded. A
+                        # bounded acknowledgement timeout moves the durable
+                        # operation into reconciliation; validation then
+                        # proves completion without replaying the install.
+                        request_timeout = min(timeout, HACS_ACK_TIMEOUT_SECONDS)
+                        return await self.ha.install(update, request_timeout)
                     self.dispatch(run, "update", request, update=update)
             except APIError:
                 # Discovery/health errors never imply that a mutation completed.

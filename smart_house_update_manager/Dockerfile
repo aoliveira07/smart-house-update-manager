@@ -1,5 +1,5 @@
 FROM python:3.13.7-alpine3.22
-ARG BUILD_VERSION=0.1.2
+ARG BUILD_VERSION=0.1.3
 ARG BUILD_REPOSITORY_URL=https://github.com/aoliveira07/smart-house-update-manager
 LABEL io.hass.name="Smart House Update Manager" \
       io.hass.description="Persistent maintenance and safe daily host reboot" \
