@@ -17,6 +17,7 @@ class FakeSupervisor:
         self.fail = set()
         self.uncertain = set()
         self.hold_jobs = False
+        self.hold_update_jobs = False
         self.core = {"version": "1", "version_latest": "2", "update_available": False, "state": "started"}
         self.os = {"version": "1", "version_latest": "2", "update_available": False, "version_pending": None}
         self.supervisor = {"version": "1", "auto_update": True}
@@ -31,12 +32,15 @@ class FakeSupervisor:
                 "/os/info": self.os, "/supervisor/info": self.supervisor,
                 "/addons": {"addons": self.addons}, "/addons/self/info": {"slug": "abc_smart_house_update_manager"},
                 "/backups/info": {"backups": self.backups}, "/host/info": {"boot_timestamp": self.boot}}
-        if path.startswith("/jobs/") and path != "/jobs/info":
-            return copy.deepcopy(next(j for j in self.job_list if j["uuid"] == path.split("/")[-1]))
         if path.startswith("/addons/") and path.endswith("/info") and path not in data:
             return copy.deepcopy(next(a for a in self.addons if a["slug"] == path.split("/")[2]))
         if path == "/jobs/info":
             return {"jobs": copy.deepcopy(self.job_list)}
+        if path.startswith("/jobs/") and path != "/jobs/info":
+            job = next((j for j in self.job_list if j["uuid"] == path.split("/")[-1]), None)
+            if job is None:
+                raise APIError(404)
+            return copy.deepcopy(job)
         return copy.deepcopy(data[path])
 
     async def jobs(self):
@@ -48,6 +52,7 @@ class FakeSupervisor:
             raise APIError(0, True)
         if path in self.fail:
             raise APIError(400)
+        held = self.hold_jobs or (path.startswith("/store/addons/") and self.hold_update_jobs)
         if path == "/backups/new/full":
             self.backups.append({"name": body["name"], "type": "full", "slug": "backup-slug"})
         elif path == "/supervisor/options":
@@ -58,10 +63,11 @@ class FakeSupervisor:
             self.os.update(version_pending=body["version"], update_available=False)
         elif path.startswith("/store/addons/"):
             addon = next(a for a in self.addons if a["slug"] == path.split("/")[3])
-            addon.update(version=addon["version_latest"], update_available=False)
+            if not held:
+                addon.update(version=addon["version_latest"], update_available=False)
         if (body or {}).get("background"):
             job_id = str(len(self.job_list) + 1)
-            self.job_list.append({"uuid": job_id, "done": not self.hold_jobs, "errors": [], "child_jobs": []})
+            self.job_list.append({"uuid": job_id, "done": not held, "errors": [], "child_jobs": []})
             return {"job_id": job_id}
         return {}
 

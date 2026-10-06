@@ -17,6 +17,7 @@ DEFAULTS = {
     "supervisor": {"ensure_native_auto_update": True},
     "notifications": {"success": True, "failure": True, "reboot_failure": True},
     "dry_run": False, "update_timeout_minutes": 120, "health_timeout_minutes": 15,
+    "recovery": {"retry_interval_minutes": 5, "max_attempts": 3},
 }
 
 

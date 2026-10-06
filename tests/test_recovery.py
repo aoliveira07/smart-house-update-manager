@@ -35,6 +35,40 @@ async def test_app_restart_resumes_backup_job_without_duplicate(env):
     assert env.state.history()[0]["status"] == "success"
 
 
+async def test_blocked_update_is_reconciled_and_retried_without_duplicate_lock(env):
+    add_update(env, "APP")
+    env.sup.hold_update_jobs = True
+    await env.m.start()
+    await pump(env)
+    assert env.state.active()["operation"]["kind"] == "update"
+    assert len(env.sup.posts("/store/addons/test_app/update")) == 1
+    env.now[0] += 7201
+    await env.m.tick()
+    assert env.state.active()["status"] == "blocked"
+    env.sup.job_list = []
+    env.sup.hold_update_jobs = False
+    await pump(env)
+    assert len(env.sup.posts("/store/addons/test_app/update")) == 2
+    assert env.state.history()[0]["status"] == "success"
+    assert any(e["phase"] == "RECOVERY" for e in env.state.events())
+
+
+async def test_blocked_update_confirmed_after_restart_is_not_replayed(env):
+    add_update(env, "APP")
+    env.sup.hold_update_jobs = True
+    await env.m.start()
+    await pump(env)
+    env.now[0] += 7201
+    await env.m.tick()
+    assert env.state.active()["status"] == "blocked"
+    env.sup.job_list = []
+    env.sup.addons[0].update(version="2", update_available=False)
+    env.m = Manager(env.state, env.sup, env.ha, env.m.config, lambda: env.now[0])
+    await pump(env)
+    assert len(env.sup.posts("/store/addons/test_app/update")) == 1
+    assert env.state.history()[0]["status"] == "success"
+
+
 async def test_uncertain_post_holds_lock_and_blocks_reboot(env):
     add_update(env, "CORE")
     env.sup.uncertain.add("/backups/new/full")

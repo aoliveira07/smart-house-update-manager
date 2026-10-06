@@ -1,7 +1,8 @@
 """Persistent, single-writer maintenance state machine.
 
 Every external mutation has a committed intent before dispatch. An interrupted
-POST is never replayed: its job/result is reconciled or the run stays blocked.
+POST is never replayed blindly: its job/result is reconciled, or a bounded safe
+retry is prepared only after the previous operation is no longer active.
 """
 import asyncio
 import copy
@@ -72,8 +73,11 @@ class Manager:
             run["errors"].append(reason)
             self.journal.log(run["run_id"], run["current_step"], reason)
             await self.notify(run["run_id"], f"Execução bloqueada: {reason}. Consulte o painel.", "failure")
+        recovery = run.setdefault("recovery", {"attempts": 0})
+        recovery.setdefault("attempts", 0)
+        recovery.update(next_at=self.clock(), last_blocked_at=stamp(), last_reason=reason)
         run["status"] = "blocked"
-        run["abort"] = True  # A later reconciliation cannot restart the update sequence.
+        run["abort"] = True  # Reconciliation clears this only after external state is safe.
         self.state.save(run)
 
     async def defer(self, run, reason):
@@ -105,6 +109,184 @@ class Manager:
             await self.defer(run, "preflight ocupado excedeu o prazo; nenhuma operação nova foi iniciada")
         self.state.save(run)
         return False
+
+    def recovery_config(self, run):
+        values = run.get("options", {}).get("recovery", {})
+        return {"retry_interval_minutes": values.get("retry_interval_minutes", 5),
+                "max_attempts": values.get("max_attempts", 3)}
+
+    def recovery_wait(self, run, reason):
+        recovery = run.setdefault("recovery", {"attempts": 0})
+        recovery.setdefault("attempts", 0)
+        recovery.update(next_at=self.clock() + self.recovery_config(run)["retry_interval_minutes"] * 60,
+                        last_check_at=stamp(), last_reason=reason)
+        self.state.save(run)
+        if recovery.get("last_logged_reason") != reason:
+            recovery["last_logged_reason"] = reason
+            self.state.save(run)
+            self.journal.log(run["run_id"], "RECOVERY", "aguardando: " + reason)
+
+    async def operation_job_state(self, operation):
+        job_id = operation.get("job_id")
+        if not job_id:
+            return "missing"
+        try:
+            job = await self.sup.get("/jobs/" + segment(job_id))
+        except APIError as exc:
+            if exc.status == 404:
+                return "missing"
+            raise
+        try:
+            return "complete" if job_complete(job) else "active"
+        except APIError as exc:
+            if exc.status == 200:
+                return "failed"
+            raise
+
+    async def operation_confirmed(self, operation):
+        kind = operation.get("kind")
+        if kind == "native_supervisor":
+            return (await self.sup.get("/supervisor/info")).get("auto_update") is True
+        if kind == "backup":
+            if not operation.get("job_id"):
+                return False
+            try:
+                return await poll_backup(self.sup, operation)
+            except APIError as exc:
+                if exc.status == 200:
+                    return False
+                raise
+        update = operation.get("update")
+        return bool(update and await validate_update(self.sup, self.ha, update))
+
+    async def complete_operation(self, run, operation, reconciled=False):
+        if not await self.safe():
+            return False
+        if operation["kind"] == "backup":
+            run.update(backup_status="success", backup_slug=operation["slug"],
+                       backup_name=operation["name"],
+                       backup_duration_seconds=self.clock() - operation["started"],
+                       current_step="updates")
+            self.journal.log(run["run_id"], "BACKUP", "completed")
+        elif operation["kind"] == "native_supervisor":
+            run.update(supervisor_auto_update=True, current_step="backup_gate")
+        else:
+            update = operation["update"]
+            if update["category"] == "OS":
+                run.update(os_reboot_required=True, status="waiting_reboot", current_step="waiting_reboot")
+                run["os_staged_at"] = stamp()
+            else:
+                run["updates_completed"].append({**update, "result": "success"})
+                run["index"] += 1
+                run["current_step"] = "updates"
+                self.journal.log(run["run_id"], "UPDATE",
+                                 "reconciled after timeout" if reconciled else "validated")
+        run["operation"] = None
+        if reconciled:
+            run["status"] = "waiting_reboot" if run.get("os_reboot_required") else "running"
+            run["abort"] = False
+            run.setdefault("recovery", {})["reconciled_at"] = stamp()
+            self.journal.log(run["run_id"], "RECOVERY", "operação concluída com evidência")
+        self.state.save(run)
+        return True
+
+    async def retry_blocked(self, run, operation, reason):
+        recovery = run.setdefault("recovery", {"attempts": 0})
+        recovery.setdefault("attempts", 0)
+        config = self.recovery_config(run)
+        if recovery["attempts"] >= config["max_attempts"]:
+            run["errors"].append("recuperação automática esgotou as tentativas; nova janela será permitida")
+            await self.finish(run, "failed")
+            self.journal.log(run["run_id"], "RECOVERY", "tentativas esgotadas; lock liberado")
+            return
+        attempt = recovery["attempts"] + 1
+        recovery.update(attempts=attempt,
+                        next_at=self.clock() if attempt == 1 else
+                        self.clock() + config["retry_interval_minutes"] * 60,
+                        last_retry_at=stamp(), last_retry_reason=reason)
+        run["operation"] = None
+        run["abort"] = False
+        run["status"] = "running"
+        if operation.get("kind") == "backup":
+            run["backup_status"] = "not_needed"
+            run["current_step"] = "backup_gate"
+        elif operation.get("kind") == "native_supervisor":
+            run["current_step"] = "native_supervisor"
+        else:
+            run["current_step"] = "updates"
+        self.state.save(run)
+        self.journal.log(run["run_id"], "RECOVERY", f"nova tentativa preparada ({attempt}): {reason}")
+
+    async def reconcile_blocked(self, run):
+        operation = run.get("operation")
+        if not operation:
+            try:
+                if await self.safe():
+                    run["errors"].append("execução bloqueada sem operação; lock liberado para nova janela")
+                    await self.finish(run, "failed")
+                else:
+                    self.recovery_wait(run, "não foi possível provar que não há operação ativa")
+            except APIError:
+                self.recovery_wait(run, "API indisponível para validar uma execução bloqueada")
+            return
+        if self.clock() < run.get("recovery", {}).get("next_at", 0):
+            return
+        if self.task:
+            if not self.task.done():
+                self.recovery_wait(run, "requisição original ainda está em andamento")
+                return
+            task, self.task = self.task, None
+            try:
+                response = task.result()
+            except APIError:
+                response = None
+            if response is not None:
+                operation["accepted"] = True
+                if isinstance(response, dict) and response.get("job_id"):
+                    operation["job_id"] = response["job_id"]
+                self.state.save(run)
+        if not operation.get("accepted") and not operation.get("job_id"):
+            try:
+                if await self.safe():
+                    recovery = run.setdefault("recovery", {"attempts": 0})
+                    recovery.setdefault("attempts", 0)
+                    if recovery["attempts"] >= self.recovery_config(run)["max_attempts"]:
+                        run["errors"].append("POST incerto sem confirmação; lock liberado após reconciliação")
+                        await self.finish(run, "failed")
+                        self.journal.log(run["run_id"], "RECOVERY", "POST incerto expirou; lock liberado")
+                    else:
+                        recovery["attempts"] += 1
+                        recovery.update(
+                            next_at=self.clock() + self.recovery_config(run)["retry_interval_minutes"] * 60,
+                            last_check_at=stamp(), last_reason="POST incerto sem confirmação")
+                        self.state.save(run)
+                        self.journal.log(run["run_id"], "RECOVERY",
+                                         f"POST incerto aguardando reconciliação ({recovery['attempts']})")
+                else:
+                    self.recovery_wait(run, "POST incerto e ainda há operação crítica ativa")
+            except APIError:
+                self.recovery_wait(run, "API indisponível para reconciliar POST incerto")
+            return
+        try:
+            if await self.operation_confirmed(operation):
+                if not await self.complete_operation(run, operation, reconciled=True):
+                    self.recovery_wait(run, "operação concluída, mas há outra atividade crítica ativa")
+                return
+            state = await self.operation_job_state(operation)
+            if state == "active":
+                self.recovery_wait(run, "job ainda ativo; nenhuma nova operação será enviada")
+                return
+            if state == "failed":
+                run["errors"].append("job terminou com erro durante a reconciliação")
+                await self.finish(run, "failed")
+                return
+            if not await self.safe():
+                self.recovery_wait(run, "job terminou, mas a condição segura ainda não foi confirmada")
+                return
+            await self.retry_blocked(run, operation,
+                                     "job ausente ou concluído sem a versão alvo; nova tentativa segura")
+        except APIError:
+            self.recovery_wait(run, "API indisponível durante a reconciliação")
 
     async def finalize_run(self, run):
         """Re-discover after the plan and reject silent pending updates."""
@@ -145,6 +327,7 @@ class Manager:
                     await self.poll(run)
                     return
                 if run["status"] == "blocked":
+                    await self.reconcile_blocked(run)
                     return
                 if run["current_step"] == "discovery":
                     self.journal.log(run["run_id"], "DISCOVERY", "started")
@@ -233,6 +416,9 @@ class Manager:
 
     async def poll(self, run):
         op = run["operation"]
+        if run.get("status") == "blocked":
+            await self.reconcile_blocked(run)
+            return
         if self.task:
             if not self.task.done():
                 if self.clock() > op["deadline"]:

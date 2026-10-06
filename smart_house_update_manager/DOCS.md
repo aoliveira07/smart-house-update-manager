@@ -45,6 +45,8 @@ Edições feitas pelo painel passam a valer imediatamente, se não houver execu�
 | dry_run | false | Simulação global quando true |
 | update_timeout_minutes | 120 | Prazo de update e espera por jobs antes de operar |
 | health_timeout_minutes | 15 | Prazo para confirmar reboot, APIs e versões |
+| recovery.retry_interval_minutes | 5 | Intervalo entre reconciliações automáticas |
+| recovery.max_attempts | 3 | Máximo de novas tentativas da mesma execução bloqueada |
 
 Desabilitar backup é uma decisão explícita: o histórico registra `disabled`.
 Não existe backup periódico independente. Allowlist e denylist de firmware são
@@ -76,15 +78,20 @@ Core e OS usam chamadas síncronas oficiais em uma tarefa assíncrona, mantendo 
 disponível. A versão alvo e o prazo ficam persistidos antes da chamada.
 
 No restart, o App retoma o job conhecido ou verifica a versão alvo sem repetir o POST.
-Se a resposta se perdeu sem evidência suficiente, a execução fica bloqueada. A rotina
-diária de reboot continua planejada, mas não interrompe uma operação incerta.
+Se a resposta se perdeu sem evidência suficiente, a execução entra em reconciliação
+automática e a rotina diária de reboot continua protegida enquanto houver incerteza.
 O timeout não cancela uma operação que pode continuar no Supervisor.
 
-Se uma operação falhou ou excedeu o prazo, a fila não continua automaticamente,
-mesmo que a operação termine depois. A reconciliação pode liberar o lock com resultado
-de falha. Se não for possível reconciliar, verifique o Supervisor e a integração de
-origem; só após confirmar o término externo use “Encerrar execução bloqueada como falha”.
-Esse botão exige confirmação e recusa encerrar enquanto houver jobs ou updates ativos.
+Quando um job ainda está ativo, o App aguarda e registra a próxima verificação. Quando
+o job desaparece ou termina sem instalar a versão alvo, o App só prepara uma nova tentativa
+depois de confirmar que não há atividade crítica. A primeira recuperação é imediata; as
+seguintes usam `recovery.retry_interval_minutes`. Após `recovery.max_attempts`, a execução
+é marcada como falha e o lock é liberado para a próxima janela de manutenção. Um POST sem
+confirmação nunca é repetido cegamente; ele permanece limitado à reconciliação segura.
+
+O botão “Encerrar execução bloqueada como falha” permanece como intervenção manual de
+emergência, mas não é necessário para o fluxo normal de recuperação e continua recusando
+o encerramento enquanto houver jobs ou updates ativos.
 
 Uma espera de preflight que exceda o prazo sem ter enviado uma mutação é registrada
 como `deferred`, libera o lock e pode ser tentada na próxima janela. Um POST incerto
@@ -120,7 +127,8 @@ confirmar sucesso, mesmo que o host tenha de fato reiniciado.
 
 O painel exibe as últimas 100 execuções, 100 resultados de reboot e 300 eventos.
 Cada execução registra a origem (`scheduled`, `manual` ou `dry_run`), fuso, plano,
-seleção, operação, job, validação pós-update e motivo de bloqueio/adiamento.
+seleção, operação, job, validação pós-update, tentativas de `RECOVERY` e motivo de
+bloqueio/adiamento.
 As execuções e eventos permanecem no banco; não há remoção automática nesta versão.
 As notificações são persistentes no Home Assistant e ficam em fila caso o Core esteja
 indisponível. Logs usam run_id e fases controladas; tokens e respostas HTTP brutas não

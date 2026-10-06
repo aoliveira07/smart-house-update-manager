@@ -16,9 +16,12 @@ usa o prazo persistido e o intervalo configurado de 5 minutos. A agenda usa data
 do fuso do Home Assistant e impede duplicação durante a repetição de hora no DST.
 O horário perdido é recuperado no mesmo dia; reboot não é enviado após seu prazo.
 
-Uma intenção gravada sem resposta não é repetida, pois a API não fornece chaves
-de idempotência para essas operações. Jobs conhecidos e versões podem resolver
-a intenção; os casos sem prova mantêm o lock e exigem intervenção explícita.
+Uma intenção gravada sem resposta não é repetida cegamente, pois a API não fornece
+chaves de idempotência para essas operações. Jobs conhecidos e versões resolvem a
+intenção quando possível. Uma operação expirada entra em reconciliação limitada:
+aguarda jobs ativos, confirma a versão instalada ou prepara uma nova tentativa apenas
+depois de provar que a operação anterior terminou. O lock é liberado após o limite
+persistido de tentativas, permitindo uma nova janela sem deixar o sistema travado.
 
 ## Permissões
 

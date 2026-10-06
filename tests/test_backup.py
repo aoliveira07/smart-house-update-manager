@@ -19,7 +19,7 @@ async def test_backup_failure_aborts_updates(env):
     assert env.state.history()[0]["status"] == "failed"
 
 
-async def test_backup_timeout_never_installs_even_if_job_later_finishes(env):
+async def test_backup_timeout_reconciles_when_job_later_finishes(env):
     add_update(env, "CORE")
     env.sup.hold_jobs = True
     await env.m.start()
@@ -28,9 +28,10 @@ async def test_backup_timeout_never_installs_even_if_job_later_finishes(env):
     await pump(env, 2)
     assert env.state.active()["status"] == "blocked"
     env.sup.job_list[0]["done"] = True
+    env.now[0] += 300
     await pump(env)
-    assert not env.sup.posts("/core/update")
-    assert env.state.history()[0]["status"] == "failed"
+    assert len(env.sup.posts("/core/update")) == 1
+    assert env.state.history()[0]["status"] == "success"
 
 
 async def test_child_error_fails_backup(env):
