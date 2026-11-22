@@ -1,12 +1,5 @@
-MethodException: 
-Line |
-   2 |  … ockerfile'; $c=$c.Replace('0.1.4','0.1.5').Replace([char]13+[char]10, …
-     |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-     | Cannot convert argument "oldChar", with value: "
-", for "Replace" to type "System.Char": "Cannot convert value "
-" to type "System.Char". Error: "String must be exactly one character long.""
 FROM python:3.13.7-alpine3.22
-ARG BUILD_VERSION=0.1.4
+ARG BUILD_VERSION=0.1.5
 ARG BUILD_REPOSITORY_URL=https://github.com/aoliveira07/smart-house-update-manager
 LABEL io.hass.name="Smart House Update Manager" \
       io.hass.description="Persistent maintenance and safe daily host reboot" \
@@ -25,3 +18,4 @@ RUN chmod 755 /run.sh
 ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
 EXPOSE 8099
 CMD ["/run.sh"]
+

@@ -1,10 +1,3 @@
-MethodException: 
-Line |
-   2 |  … sifier.py'; $c=$c.Replace('0.1.4','0.1.5').Replace([char]13+[char]10, …
-     |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-     | Cannot convert argument "oldChar", with value: "
-", for "Replace" to type "System.Char": "Cannot convert value "
-" to type "System.Char". Error: "String must be exactly one character long.""
 import pytest
 from app.classifier import classify
 from conftest import add_update, pump
@@ -53,3 +46,4 @@ async def test_self_update_excluded(env):
     await env.m.start()
     await pump(env)
     assert not env.sup.posts()
+

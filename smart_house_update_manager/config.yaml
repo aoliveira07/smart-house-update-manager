@@ -1,13 +1,6 @@
-MethodException: 
-Line |
-   2 |  … nfig.yaml'; $c=$c.Replace('0.1.4','0.1.5').Replace([char]13+[char]10, …
-     |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-     | Cannot convert argument "oldChar", with value: "
-", for "Replace" to type "System.Char": "Cannot convert value "
-" to type "System.Char". Error: "String must be exactly one character long.""
 name: Smart House Update Manager
 url: https://github.com/aoliveira07/smart-house-update-manager/tree/main/smart_house_update_manager
-version: 0.1.4
+version: 0.1.5
 slug: smart_house_update_manager
 description: Maintenance, verified backups and safe daily host reboot
 arch:
@@ -93,3 +86,4 @@ schema:
     retry_interval_minutes: int(1,1440)
     max_attempts: int(1,10)
 image: ghcr.io/aoliveira07/smart-house-update-manager
+
