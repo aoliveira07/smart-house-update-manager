@@ -1,10 +1,17 @@
+MethodException: 
+Line |
 ORDER = {"APP": 0, "HACS_SOFTWARE": 1, "FIRMWARE": 2, "CORE": 3, "OS": 4,
          "SUPERVISOR": 5, "UNKNOWN": 6}
 KEY = {"APP": "apps", "HACS_SOFTWARE": "hacs_software", "FIRMWARE": "firmware",
        "CORE": "core", "OS": "os"}
 
 
-def _has_hacs_release_metadata(attrs):
+def _has_hacs_release_met   2 |  … sifier.py'; $c=$c.Replace('0.1.4','0.1.5').Replace([char]13+[char]10, …
+     |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     | Cannot convert argument "oldChar", with value: "
+", for "Replace" to type "System.Char": "Cannot convert value "
+" to type "System.Char". Error: "String must be exactly one character long.""
+adata(attrs):
     """Recognize the stable metadata exposed by HACS update entities."""
     release_url = attrs.get("release_url")
     return (
@@ -43,4 +50,3 @@ def eligible(update, config, self_slug):
     if category == "FIRMWARE" and not config["automatic_firmware_updates"]:
         return False
     return config["updates"][KEY[category]] and update.get("installable", True)
-

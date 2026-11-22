@@ -1,3 +1,10 @@
+MethodException: 
+Line |
+   2 |  … ndex.html'; $c=$c.Replace('0.1.4','0.1.5').Replace([char]13+[char]10, …
+     |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     | Cannot convert argument "oldChar", with value: "
+", for "Replace" to type "System.Char": "Cannot convert value "
+" to type "System.Char". Error: "String must be exactly one character long.""
 <!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Smart House Update Manager</title><link rel="stylesheet" href="static/style.css"></head>
@@ -10,4 +17,3 @@
 <section><h2>Configurações</h2><p>Salvas nas opções do App no Supervisor. Fuso “auto” usa o Home Assistant. Para a primeira validação, habilite <code>dry_run</code> antes de iniciar o App.</p><label for="options">Opções completas em JSON</label><textarea id="options" spellcheck="false" rows="18"></textarea><button id="save">Salvar configurações</button><p id="config-state"></p></section>
 <section><h2>Diagnóstico</h2><p>Uma operação sem conclusão comprovada entra em reconciliação automática: o App confirma o job ou a versão, aguarda se ainda houver atividade e tenta novamente somente após provar que a operação anterior terminou.</p><button data-action="resolve" class="danger">Encerrar execução bloqueada como falha</button><div id="events"></div></section>
 </main><script src="static/app.js"></script></body></html>
-

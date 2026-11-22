@@ -1,3 +1,10 @@
+MethodException: 
+Line |
+   2 |  … README.md'; $c=$c.Replace('0.1.4','0.1.5').Replace([char]13+[char]10, …
+     |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     | Cannot convert argument "oldChar", with value: "
+", for "Replace" to type "System.Char": "Cannot convert value "
+" to type "System.Char". Error: "String must be exactly one character long.""
 # Smart House Update Manager — SH-005
 
 Entrega de código, versão **0.1.4**, para homologação em Home Assistant OS.
@@ -72,4 +79,3 @@ licença de distribuição; a escolha permanece com o proprietário.
 
 SH-005 permanece pendente de homologação real. A execução dos testes simulados não
 comprova instalação, build Docker, permissões efetivas da instalação alvo ou reboot físico.
-

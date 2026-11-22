@@ -1,3 +1,10 @@
+MethodException: 
+Line |
+   2 |  … r/DOCS.md'; $c=$c.Replace('0.1.4','0.1.5').Replace([char]13+[char]10, …
+     |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     | Cannot convert argument "oldChar", with value: "
+", for "Replace" to type "System.Char": "Cannot convert value "
+" to type "System.Char". Error: "String must be exactly one character long.""
 # Manual operacional — SH-005
 
 ## Instalação e primeira execução
@@ -165,4 +172,3 @@ O Supervisor não oferece uma transação pública que reserve todos os jobs ent
 consulta e o reboot; o App faz uma segunda verificação imediatamente antes do POST,
 mas uma ação externa ainda pode começar nesse intervalo. `force=false` preserva a
 proteção nativa de migração offline do Core; a homologação deve incluir concorrência externa.
-

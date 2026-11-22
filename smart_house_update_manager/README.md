@@ -1,3 +1,10 @@
+MethodException: 
+Line |
+   2 |  … README.md'; $c=$c.Replace('0.1.4','0.1.5').Replace([char]13+[char]10, …
+     |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     | Cannot convert argument "oldChar", with value: "
+", for "Replace" to type "System.Char": "Cannot convert value "
+" to type "System.Char". Error: "String must be exactly one character long.""
 # Smart House Update Manager
 
 ![Smart House Update Manager](logo.png)
@@ -18,4 +25,3 @@ porta publicada na rede local. Firmware fica manual por padrão e UNKNOWN nunca 
 instalado automaticamente. O Supervisor conserva seu próprio auto-update nativo.
 
 Consulte [DOCS.md](DOCS.md) para configuração, limitações, recuperação e migração.
-

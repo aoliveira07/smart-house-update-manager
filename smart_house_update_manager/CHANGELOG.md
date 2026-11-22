@@ -1,3 +1,10 @@
+MethodException: 
+Line |
+   2 |  … NGELOG.md'; $c=$c.Replace('0.1.4','0.1.5').Replace([char]13+[char]10, …
+     |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     | Cannot convert argument "oldChar", with value: "
+", for "Replace" to type "System.Char": "Cannot convert value "
+" to type "System.Char". Error: "String must be exactly one character long.""
 # Changelog
 
 ## 0.1.4 — 2026-11-22
@@ -41,4 +48,3 @@
 - Ingress administrativo, CSRF, histórico, configuração persistida e notificações.
 - Dockerfile multiarch, workflows de testes e GHCR, testes automatizados e documentação.
 - Nenhuma instalação real, publicação ou migração de automações realizada nesta entrega.
-
