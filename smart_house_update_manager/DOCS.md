@@ -60,9 +60,12 @@ O próprio App é excluído pelo slug real, incluindo o prefixo do repositório.
 
 Para as demais entidades, `device_class=firmware` tem prioridade. A integração
 `hacs` ou uma classe explícita `software`, com registro de origem disponível,
-permite a classificação HACS_SOFTWARE. Sem evidência suficiente, usa-se UNKNOWN.
-Uma falha ao consultar o registro aborta a descoberta; nomes parecidos com HACS
-não são usados como prova. A entidade precisa expor a capacidade INSTALL.
+permite a classificação HACS_SOFTWARE. Também são aceitas entidades que expõem
+simultaneamente `auto_update`, `installed_version`, `latest_version` e um
+`release_url` de release do GitHub, mesmo quando o registro não informa a origem
+HACS. Sem evidência suficiente, usa-se UNKNOWN. Uma falha ao consultar o registro
+aborta a descoberta; nomes parecidos com HACS não são usados como prova. A entidade
+precisa expor a capacidade INSTALL.
 Não há suporte universal a integrações sem entidade update ou sem ação install.
 
 ## Execução e retomada
@@ -162,3 +165,4 @@ O Supervisor não oferece uma transação pública que reserve todos os jobs ent
 consulta e o reboot; o App faz uma segunda verificação imediatamente antes do POST,
 mas uma ação externa ainda pode começar nesse intervalo. `force=false` preserva a
 proteção nativa de migração offline do Core; a homologação deve incluir concorrência externa.
+

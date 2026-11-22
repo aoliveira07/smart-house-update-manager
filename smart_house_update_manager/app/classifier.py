@@ -4,6 +4,19 @@ KEY = {"APP": "apps", "HACS_SOFTWARE": "hacs_software", "FIRMWARE": "firmware",
        "CORE": "core", "OS": "os"}
 
 
+def _has_hacs_release_metadata(attrs):
+    """Recognize the stable metadata exposed by HACS update entities."""
+    release_url = attrs.get("release_url")
+    return (
+        isinstance(release_url, str)
+        and release_url.startswith("https://github.com/")
+        and "/releases/tag/" in release_url
+        and "auto_update" in attrs
+        and attrs.get("installed_version") is not None
+        and attrs.get("latest_version") is not None
+    )
+
+
 def classify(entity, registry):
     entry = registry.get(entity["entity_id"])
     if entry and entry.get("platform") == "hassio":
@@ -12,8 +25,9 @@ def classify(entity, registry):
     if attrs.get("device_class") == "firmware":
         return "FIRMWARE"
     if not entry:
-        return "UNKNOWN"
-    if entry.get("platform") == "hacs" or attrs.get("device_class") == "software":
+        return "HACS_SOFTWARE" if _has_hacs_release_metadata(attrs) else "UNKNOWN"
+    if (entry.get("platform") == "hacs" or attrs.get("device_class") == "software" or
+            _has_hacs_release_metadata(attrs)):
         return "HACS_SOFTWARE"
     return "UNKNOWN"
 
@@ -29,3 +43,4 @@ def eligible(update, config, self_slug):
     if category == "FIRMWARE" and not config["automatic_firmware_updates"]:
         return False
     return config["updates"][KEY[category]] and update.get("installable", True)
+

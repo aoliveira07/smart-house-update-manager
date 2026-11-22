@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.4 — 2026-11-22
+
+- Corrige a classificação de entidades de software HACS que expõem o contrato de update (`auto_update`, versões e release GitHub), mas não informam `platform=hacs` ou `device_class=software` no registro.
+- Mantém firmware com precedência e deixa entidades sem evidência suficiente em `UNKNOWN`, sem instalação automática.
+- Adiciona regressões para Kiosk Mode e para um update GitHub sem os marcadores HACS.
+
 ## 0.1.3 — 2026-10-06
 
 - Reconhece atualização HACS baixada com a versão alvo instalada e reinício do Home Assistant requerido, sem reenviar o install nem transformar a etapa em falha.
@@ -35,3 +41,4 @@
 - Ingress administrativo, CSRF, histórico, configuração persistida e notificações.
 - Dockerfile multiarch, workflows de testes e GHCR, testes automatizados e documentação.
 - Nenhuma instalação real, publicação ou migração de automações realizada nesta entrega.
+
