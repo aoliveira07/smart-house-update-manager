@@ -1,6 +1,6 @@
 # Smart House Update Manager — SH-005
 
-Entrega de código, versão **0.1.5**, para homologação em Home Assistant OS.
+Entrega de código, versão **0.1.6**, para homologação em Home Assistant OS.
 Centraliza manutenção às 04:00 e reboot diário às 05:30, ambos configuráveis.
 O reboot ocorre mesmo sem atualizações, respeitando jobs críticos e o modo Dry Run.
 
@@ -9,7 +9,7 @@ workflows para amd64/aarch64 e instruções para GHCR. Repositório:
 https://github.com/aoliveira07/smart-house-update-manager.
 Não houve instalação em Home Assistant nem alteração das seis automações existentes.
 
-A versão 0.1.5 reconhece entidades HACS que expõem o contrato de update mesmo quando
+A versão 0.1.6 reconhece entidades HACS que expõem o contrato de update mesmo quando
 o registro do Home Assistant não informa explicitamente a origem. Ela também reconcilia
 automaticamente operações que expiraram sem confirmação:
 confirma a versão ou o job, aguarda operações ainda ativas e refaz a tentativa somente
@@ -42,8 +42,8 @@ que o lock fique permanente.
 
 ## GitHub e imagens
 
-A versão `0.1.5` será publicada em
-`ghcr.io/aoliveira07/smart-house-update-manager:0.1.5`, com download público para
+A versão `0.1.6` será publicada em
+`ghcr.io/aoliveira07/smart-house-update-manager:0.1.6`, com download público para
 amd64 e aarch64. O manifesto já usa essa imagem. Os testes e o build no GitHub Actions
 passaram; os resultados estão em [PUBLICATION.md](PUBLICATION.md).
 

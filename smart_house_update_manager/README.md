@@ -5,10 +5,10 @@
 Home Assistant App para atualizar Apps, software/HACS, Core e OS com backup prévio,
 histórico persistente, validação e reboot preventivo diário independente.
 
-Versão 0.1.5 para homologação. Use `dry_run: true` antes de iniciar pela primeira vez.
+Versão 0.1.6 para homologação. Use `dry_run: true` antes de iniciar pela primeira vez.
 Não desative as automações existentes até concluir os testes reais.
 
-A versão 0.1.5 também reconhece entidades HACS que não registram explicitamente a
+A versão 0.1.6 também reconhece entidades HACS que não registram explicitamente a
 origem no entity registry, desde que exponham o contrato completo de release e update.
 Operações que expiraram sem confirmação continuam em reconciliação segura, aguardando
 jobs ativos e tentando novamente somente depois de provar que a operação anterior terminou.

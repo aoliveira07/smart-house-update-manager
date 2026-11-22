@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.5 — 2026-11-22
+## 0.1.6 — 2026-11-22
 
 - Corrige a classificação de entidades de software HACS que expõem o contrato de update (`auto_update`, versões e release GitHub), mas não informam `platform=hacs` ou `device_class=software` no registro.
 - Mantém firmware com precedência e deixa entidades sem evidência suficiente em `UNKNOWN`, sem instalação automática.
